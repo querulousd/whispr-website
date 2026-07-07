@@ -36,8 +36,9 @@
       return;
     }
 
-    var image = new Image();
     var asset = slot.getAttribute("data-asset");
+    var webpAsset = slot.getAttribute("data-asset-webp");
+    var image = new Image();
 
     if (!asset) {
       return;
@@ -46,30 +47,30 @@
     slot.dataset.loaded = "true";
     image.decoding = "async";
 
-    image.onload = function () {
-      slot.style.backgroundImage = "url('" + asset + "')";
+    function applyAsset(path) {
+      slot.style.backgroundImage = "url('" + path + "')";
       slot.classList.add("has-asset");
+    }
+
+    image.onload = function () {
+      applyAsset(image.src);
     };
 
-    image.src = asset;
+    image.onerror = function () {
+      if (webpAsset && image.src.indexOf(webpAsset) !== -1) {
+        var fallback = new Image();
+        fallback.decoding = "async";
+        fallback.onload = function () {
+          applyAsset(asset);
+        };
+        fallback.src = asset;
+      }
+    };
+
+    image.src = webpAsset || asset;
   }
 
-  if ("IntersectionObserver" in window) {
-    var assetObserver = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          loadAsset(entry.target);
-          assetObserver.unobserve(entry.target);
-        }
-      });
-    }, { rootMargin: "320px 0px" });
-
-    assetSlots.forEach(function (slot) {
-      assetObserver.observe(slot);
-    });
-  } else {
-    assetSlots.forEach(loadAsset);
-  }
+  assetSlots.forEach(loadAsset);
 
   if (reduceMotion || !("IntersectionObserver" in window)) {
     revealItems.forEach(function (item) {
